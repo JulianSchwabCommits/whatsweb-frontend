@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat</title>
+  <script src="https://cdn.socket.io/3.0.0/socket.io.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <h2>Chat</h2>
+  <p id="socket-id-display"></p>
+
+  <h3>Manage Rooms</h3>
+  <input id="room-input" placeholder="Room name">
+  <button data-action="joinRoom">Join Room</button>
+  <button data-action="leaveRoom">Leave Room</button>
+
+  <h3>Send Message to a Room</h3>
+  <input id="room-name-input" placeholder="Room name">
+  <input id="room-message-input" placeholder="Message">
+  <button data-action="roomMessage">Send</button>
+
+  <h3>Send Private Message</h3>
+  <input id="target-id-input" placeholder="Target Socket ID">
+  <input id="message-input" placeholder="Message">
+  <button data-action="privateMessage">Send</button>
+
+  <h3>Messages</h3>
+  <ul id="messages"></ul>
+</body>
+</html>
