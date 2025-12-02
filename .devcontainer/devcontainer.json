@@ -1,0 +1,16 @@
+{
+  "name": "WhatsWeb-frontend",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "forwardPorts": [3000, 8080],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-azureappservice"
+      ]
+    }
+  },
+  "postCreateCommand": "npm install"
+}
