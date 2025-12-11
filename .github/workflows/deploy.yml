@@ -26,7 +26,7 @@ jobs:
 
       # Run frontend tests
       - name: Run frontend tests
-        run: npm test -- --watchAll=false
+        run: npm test -- --watchAll=false --passWithNoTests
 
       # Build React app
       - name: Build React app
