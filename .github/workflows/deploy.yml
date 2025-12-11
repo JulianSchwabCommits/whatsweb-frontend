@@ -53,10 +53,4 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      # Trigger Azure Web App to pull new image
-      - name: Deploy to Azure Web App
-        run: |
-          curl -X POST "${{ secrets.AZURE_WEBAPP_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{}' \
-            --fail --silent --show-error
+      # Azure Web App with Continuous Deployment enabled will auto-pull the new image
