@@ -1,6 +1,5 @@
 name: Frontend -> Azure Web App
 
-# Trigger on push to main or manual run
 on:
   push:
     branches: [ main ]
@@ -15,36 +14,23 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Optional: run tests before building Docker
-      - name: Setup Node.js for tests
+      # Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
+      # Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # Run frontend tests
       - name: Run frontend tests
         run: npm test -- --watchAll=false
 
-      # Login to GitHub Container Registry
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      # Build and push Docker image
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+      # Build React app
+      - name: Build React app
+        run: npm run build
 
       # Deploy to Azure Web App
       - name: Deploy to Azure Web App
@@ -52,4 +38,4 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          images: ghcr.io/${{ github.repository }}:latest
+          package: ./build
