@@ -1,13 +1,12 @@
 import "./globals.css";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 
-const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const geistSans = Geist({ subsets: ["latin"], weight: "400", display: "swap" });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`antialiased ${geistSans.className}`}>
         {children}
       </body>
     </html>

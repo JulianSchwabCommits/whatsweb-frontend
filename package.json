@@ -231,6 +231,8 @@
     "side-channel-list": "^1.0.0",
     "side-channel-map": "^1.0.1",
     "side-channel-weakmap": "^1.0.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "source-map-js": "^1.2.1",
     "stable-hash": "^0.0.5",
     "stop-iteration-iterator": "^1.1.0",
