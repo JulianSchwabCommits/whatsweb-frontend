@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSocket } from "./hooks/useSocket";
+import { useSocket } from "../hooks/useSocket";
 
 export default function ChatPage() {
   const { socket, socketId, messages, directMessages, setDirectMessages } = useSocket();
