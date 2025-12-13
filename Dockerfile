@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # Expose the default port (doesn’t have to match Azure)
-EXPOSE 8080
+EXPOSE 3000
 
 # Start the server
-CMD ["npx", "next", "start"]
+CMD ["npx", "next", "start", "-p", "3000"]
