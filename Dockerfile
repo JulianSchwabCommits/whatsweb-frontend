@@ -17,5 +17,8 @@ RUN npm run build
 # Expose the default port (doesn’t have to match Azure)
 EXPOSE 3000
 
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+
 # Start the server
 CMD ["npx", "next", "start", "-p", "3000"]
