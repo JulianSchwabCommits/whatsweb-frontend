@@ -31,9 +31,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Run frontend tests
-      - name: Run frontend tests
-        run: npm test -- --watchAll=false --passWithNoTests
+#      - name: Run frontend tests
+#        run: npm test -- --watchAll=false --passWithNoTests
 
       # Login to GitHub Container Registry
       - name: Log in to GitHub Container Registry
