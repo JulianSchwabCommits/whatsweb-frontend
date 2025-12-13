@@ -15,10 +15,11 @@ export default function ChatPage() {
   const leave = () => socket?.emit("leaveRoom", room.trim());
 
   const send = () => {
-    if (!text.trim()) return;
-    socket?.emit("message", text.trim());
+    if (!text.trim() || !room.trim() || !socket) return;
+    socket.emit("roomMessage", { room: room.trim(), message: text.trim() });
     setText("");
   };
+
 
   const sendDirectMessage = () => {
     if (!targetId.trim() || !dmText.trim() || !socket) return;
@@ -37,7 +38,7 @@ export default function ChatPage() {
         <input placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} />
         <button onClick={join}>Join</button>
         <button onClick={leave}>Leave</button>
-
+        <br />
         <input placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} />
         <button onClick={send}>Send</button>
 
