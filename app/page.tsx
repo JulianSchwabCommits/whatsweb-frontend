@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/mode-toggle";
 
 import { useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
@@ -34,6 +35,9 @@ export default function ChatPage() {
 
   return (
     <main className="p-6 space-y-4">
+      <div className="flex justify-end">
+        <ModeToggle />
+      </div>
       <div>Socket ID: {socketId}</div>
 
       <section>
