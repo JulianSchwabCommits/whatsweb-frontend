@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { BACKEND_URL } from "@/lib/env";
-import { AppSocket } from "@/types/socket";
+import { AppSocket } from "@/types/socket.type";
 
 export function useSocket() {
     const [socket, setSocket] = useState<AppSocket | null>(null);
