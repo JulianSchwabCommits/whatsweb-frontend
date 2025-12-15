@@ -41,15 +41,15 @@ export default function ChatPage() {
       <div>Socket ID: {socketId}</div>
 
       <section>
-        <h3>Room</h3>
-        <Input placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} />
-        <Button onClick={join}>Join</Button>
+        <h3 className="mb-2 font-semibold">Room</h3>
+        <Input className="mb-2" placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} />
+        <Button className="mr-2" onClick={join}>Join</Button>
         <Button onClick={leave}>Leave</Button>
         <br />
-        <Input placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} />
+        <Input className="mt-2 mb-2" placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} />
         <Button onClick={send}>Send</Button>
 
-        <ul>
+        <ul className="mt-2">
           {messages.map((m, i) => (
             <li key={i}>{m}</li>
           ))}
@@ -57,9 +57,9 @@ export default function ChatPage() {
       </section>
 
       <section>
-        <h3>Direct Message</h3>
-        <Input placeholder="Target Socket ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
-        <Input placeholder="Message" value={dmText} onChange={(e) => setDmText(e.target.value)} />
+        <h3 className="mb-2 font-semibold">Direct Message</h3>
+        <Input className="mb-2" placeholder="Target Socket ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
+        <Input className="mb-2" placeholder="Message" value={dmText} onChange={(e) => setDmText(e.target.value)} />
         <Button onClick={sendDirectMessage}>Send DM</Button>
 
         <ul>
