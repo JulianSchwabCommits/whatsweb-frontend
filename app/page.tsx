@@ -51,10 +51,10 @@ export default function ChatPage() {
 
       <section>
         <h2>Room</h2>
-        <Input className="mb-2" placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} />
+        <Input className="mb-2" placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} onKeyDown={(e) => e.key === "Enter" && join()} />
         <Button className="mr-2" onClick={join}>Join</Button>
         <Button onClick={leave}>Leave</Button>
-        <Input className="mt-2 mb-2" placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} />
+        <Input className="mt-2 mb-2" placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
         <Button onClick={send}>Send</Button>
         <ul className="mt-2">
           {messages.map((m, i) => (
@@ -66,7 +66,7 @@ export default function ChatPage() {
       <section>
         <h2>Direct Message</h2>
         <Input className="mb-2" placeholder="Target ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
-        <Input className="mb-2" placeholder="Message" value={dmText} onChange={(e) => setDmText(e.target.value)} />
+        <Input className="mb-2" placeholder="Message" value={dmText} onChange={(e) => setDmText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendDirectMessage()} />
         <Button onClick={sendDirectMessage}>Send DM</Button>
         <ul>
           {directMessages.map((m, i) => (
