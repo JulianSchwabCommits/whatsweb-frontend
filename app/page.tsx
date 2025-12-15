@@ -3,17 +3,25 @@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import Image from "next/image";
+import { useTheme } from "next-themes";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSocket } from "@/hooks/useSocket";
 
 export default function ChatPage() {
   const { socket, socketId, messages, directMessages, setDirectMessages } = useSocket();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const [room, setRoom] = useState("");
   const [text, setText] = useState("");
   const [targetId, setTargetId] = useState("");
   const [dmText, setDmText] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const join = () => socket?.emit("joinRoom", room.trim());
   const leave = () => socket?.emit("leaveRoom", room.trim());
@@ -35,13 +43,24 @@ export default function ChatPage() {
 
   return (
     <main className="p-6 space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          {mounted && (
+            <Image
+              src={resolvedTheme === "dark" ? "/white-whatsweb.ico" : "/black-whatsweb.ico"}
+              alt="WhatsWeb Logo"
+              width={32}
+              height={32}
+            />
+          )}
+          <h1 className="text-2xl font-bold">WhatsWeb</h1>
+        </div>
+        <div>Your ID: {socketId}</div>
         <ModeToggle />
       </div>
-      <div>Socket ID: {socketId}</div>
 
       <section>
-        <h3 className="mb-2 font-semibold">Room</h3>
+        <h2>Room</h2>
         <Input className="mb-2" placeholder="Room" value={room} onChange={(e) => setRoom(e.target.value)} />
         <Button className="mr-2" onClick={join}>Join</Button>
         <Button onClick={leave}>Leave</Button>
@@ -57,8 +76,8 @@ export default function ChatPage() {
       </section>
 
       <section>
-        <h3 className="mb-2 font-semibold">Direct Message</h3>
-        <Input className="mb-2" placeholder="Target Socket ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
+        <h2>Direct Message</h2>
+        <Input className="mb-2" placeholder="Target ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
         <Input className="mb-2" placeholder="Message" value={dmText} onChange={(e) => setDmText(e.target.value)} />
         <Button onClick={sendDirectMessage}>Send DM</Button>
 
