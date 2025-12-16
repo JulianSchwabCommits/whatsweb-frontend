@@ -3,14 +3,25 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/contexts/auth-context";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { useSocket } from "@/hooks/useSocket";
 
 export default function ChatPage() {
+  return (
+    <ProtectedRoute>
+      <ChatPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function ChatPageContent() {
   const { socket, socketId, messages, directMessages, setDirectMessages } = useSocket();
   const { resolvedTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   const [room, setRoom] = useState("");
@@ -38,6 +49,10 @@ export default function ChatPage() {
     setDmText("");
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <main className="p-6 space-y-4">
       <header className="flex justify-between items-center">
@@ -45,8 +60,16 @@ export default function ChatPage() {
           {mounted && <Image src={`/${resolvedTheme === "dark" ? "white" : "black"}-whatsweb.ico`} alt="WhatsWeb Logo" width={32} height={32} />}
           <h1 className="text-2xl font-bold">WhatsWeb</h1>
         </div>
-        <span>Your ID: {socketId}</span>
-        <ModeToggle />
+        <div className="flex items-center gap-4">
+          <span className="text-sm">
+            Welcome, <span className="font-semibold">{user?.username}</span>
+          </span>
+          <span className="text-sm text-muted-foreground">ID: {socketId}</span>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            Logout
+          </Button>
+          <ModeToggle />
+        </div>
       </header>
 
       <section>

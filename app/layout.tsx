@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeFavicon } from "@/components/theme-favicon"
+import { AuthProvider } from "@/contexts/auth-context"
 
 
 const geistSans = Geist({
@@ -36,8 +37,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ThemeFavicon />
-          {children}
+          <AuthProvider>
+            <ThemeFavicon />
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
