@@ -6,13 +6,24 @@ import type {
   User,
 } from '@/types/auth';
 
+
+let accessTokenMemory: string | null = null;
+let userMemory: User | null = null;
+
 export class AuthService {
-  private static baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  private static get baseUrl(): string {
+    const url = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (!url) {
+      throw new Error('NEXT_PUBLIC_BACKEND_URL is not defined');
+    }
+    return url;
+  }
 
   static async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await fetch(`${this.baseUrl}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
 
@@ -30,6 +41,7 @@ export class AuthService {
     const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Include cookies for httpOnly refresh token
       body: JSON.stringify(credentials),
     });
 
@@ -44,16 +56,11 @@ export class AuthService {
   }
 
   static async refreshToken(): Promise<string> {
-    const refreshToken = localStorage.getItem('refreshToken');
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token');
-    }
-
+    // Refresh token is now sent via httpOnly cookie automatically
     const response = await fetch(`${this.baseUrl}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include', // Send httpOnly cookie with refresh token
     });
 
     if (!response.ok) {
@@ -62,55 +69,60 @@ export class AuthService {
     }
 
     const { accessToken } = await response.json();
-    localStorage.setItem('accessToken', accessToken);
+    accessTokenMemory = accessToken;
     return accessToken;
   }
 
   static async getCurrentUser(): Promise<User> {
     const response = await this.fetchWithAuth(`${this.baseUrl}/auth/me`);
-    return await response.json();
+    const user = await response.json();
+    userMemory = user;
+    return user;
   }
 
   static async logout(): Promise<void> {
     try {
-      await this.fetchWithAuth(`${this.baseUrl}/auth/logout`, {
+      await fetch(`${this.baseUrl}/auth/logout`, {
         method: 'POST',
+        credentials: 'include', // Include cookies to invalidate refresh token
+        headers: accessTokenMemory ? {
+          'Authorization': `Bearer ${accessTokenMemory}`,
+        } : {},
       });
     } finally {
-      localStorage.clear();
+      // Clear in-memory tokens
+      accessTokenMemory = null;
+      userMemory = null;
     }
   }
 
   static isAuthenticated(): boolean {
-    return !!localStorage.getItem('accessToken');
+    return !!accessTokenMemory;
   }
 
   static getUser(): User | null {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    return userMemory;
   }
 
   static getAccessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return accessTokenMemory;
   }
 
   private static setTokens(data: AuthResponse): void {
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    accessTokenMemory = data.accessToken;
+    userMemory = data.user;
   }
 
   private static async fetchWithAuth(
     url: string,
     options: RequestInit = {}
   ): Promise<Response> {
-    const accessToken = localStorage.getItem('accessToken');
-    
     let response = await fetch(url, {
       ...options,
+      credentials: 'include', // Include cookies
       headers: {
         ...options.headers,
-        'Authorization': `Bearer ${accessToken}`,
+        ...(accessTokenMemory ? { 'Authorization': `Bearer ${accessTokenMemory}` } : {}),
       },
     });
 
@@ -118,6 +130,7 @@ export class AuthService {
       const newToken = await this.refreshToken();
       response = await fetch(url, {
         ...options,
+        credentials: 'include',
         headers: {
           ...options.headers,
           'Authorization': `Bearer ${newToken}`,
