@@ -92,7 +92,9 @@ export function useSocket() {
             }
         });
 
-        return () => s.disconnect();
+        return () => {
+            s.disconnect();
+        };
     }, []);
 
     const sendDirectMessage = (targetId: string, message: string) => {
