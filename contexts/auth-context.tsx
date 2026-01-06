@@ -20,20 +20,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to restore session from httpOnly cookie on mount
+    // Check if user is logged in on mount
     const initAuth = async () => {
-      try {
-        // Try to refresh token using httpOnly cookie
-        // This will work if user has a valid refresh token cookie
-        await AuthService.refreshToken();
-        const userData = await AuthService.getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        // No valid session - user needs to login
-        console.log('No active session');
-      } finally {
-        setLoading(false);
+      if (AuthService.isAuthenticated()) {
+        try {
+          const userData = await AuthService.getCurrentUser();
+          setUser(userData);
+        } catch (error) {
+          console.error('Failed to get user:', error);
+          AuthService.logout();
+        }
       }
+      setLoading(false);
     };
 
     initAuth();
@@ -42,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: LoginRequest) => {
     const result = await AuthService.login(credentials);
     setUser(result.user);
-  };
+  };  
 
   const register = async (data: RegisterRequest) => {
     const result = await AuthService.register(data);

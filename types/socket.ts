@@ -3,10 +3,11 @@ import { Socket } from "socket.io-client";
 export type ServerToClientEvents = {
     message: (msg: string | { type: string; content: string; timestamp: string }) => void;
     roomMessage: (msg: string | { type: string; content: string; timestamp: string }) => void;
-    directMessage: (msg: string | { type: string; content: string; timestamp: string }) => void;
+    directMessage: (msg: any) => void;
     joinedRoom: (room: string) => void;
     leftRoom: (room: string) => void;
     error: (error: string) => void;
+    exception: (error: any) => void;
 };
 
 export type ClientToServerEvents = {
