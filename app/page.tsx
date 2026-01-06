@@ -19,7 +19,7 @@ export default function ChatPage() {
 }
 
 function ChatPageContent() {
-  const { socket, socketId, messages, directMessages, setDirectMessages } = useSocket();
+  const { socket, socketId, isConnected, messages, directMessages, setDirectMessages } = useSocket();
   const { resolvedTheme } = useTheme();
   const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -33,8 +33,31 @@ function ChatPageContent() {
     setMounted(true);
   }, []);
 
-  const join = () => socket?.emit("joinRoom", room.trim());
-  const leave = () => socket?.emit("leaveRoom", room.trim());
+  const join = () => {
+    const roomName = room.trim();
+    console.log("[ChatPage] Join button clicked, room:", roomName, "socket:", socket, "isConnected:", isConnected);
+    if (!roomName) {
+      console.warn("[ChatPage] Room name is empty");
+      return;
+    }
+    if (!socket) {
+      console.error("[ChatPage] Socket is null");
+      return;
+    }
+    if (!isConnected) {
+      console.error("[ChatPage] Socket is not connected");
+      return;
+    }
+    socket.emit("joinRoom", roomName);
+    console.log("[ChatPage] Emitted joinRoom event for:", roomName);
+  };
+
+  const leave = () => {
+    const roomName = room.trim();
+    console.log("[ChatPage] Leave button clicked, room:", roomName);
+    if (!roomName || !socket || !isConnected) return;
+    socket.emit("leaveRoom", roomName);
+  };
 
   const send = () => {
     if (!text.trim() || !room.trim() || !socket) return;
@@ -64,7 +87,9 @@ function ChatPageContent() {
           <span className="text-sm">
             Welcome, <span className="font-semibold">{user?.username}</span>
           </span>
-          <span className="text-sm text-muted-foreground">ID: {socketId}</span>
+          <span className={`text-sm ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+            {isConnected ? '● Connected' : '○ Disconnected'} {socketId && `(${socketId})`}
+          </span>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Logout
           </Button>

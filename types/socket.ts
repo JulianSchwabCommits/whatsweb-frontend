@@ -3,6 +3,9 @@ import { Socket } from "socket.io-client";
 export type ServerToClientEvents = {
     message: (msg: string) => void;
     directMessage: (msg: string) => void;
+    joinedRoom: (room: string) => void;
+    leftRoom: (room: string) => void;
+    error: (error: string) => void;
 };
 
 export type ClientToServerEvents = {

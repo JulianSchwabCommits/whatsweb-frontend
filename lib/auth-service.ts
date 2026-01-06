@@ -56,7 +56,7 @@ export class AuthService {
   }
 
   static async refreshToken(): Promise<string> {
-    // Refresh token is now sent via httpOnly cookie automatically
+    // Refresh token is sent via httpOnly cookie automatically
     const response = await fetch(`${this.baseUrl}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,8 +64,10 @@ export class AuthService {
     });
 
     if (!response.ok) {
-      this.logout();
-      throw new Error('Session expired');
+      // Clear in-memory state on refresh failure
+      accessTokenMemory = null;
+      userMemory = null;
+      throw new Error('Session expired or invalid');
     }
 
     const { accessToken } = await response.json();

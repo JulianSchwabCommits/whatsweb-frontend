@@ -20,18 +20,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
+    // Try to restore session on mount using httpOnly cookie
     const initAuth = async () => {
-      if (AuthService.isAuthenticated()) {
-        try {
-          const userData = await AuthService.getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          console.error('Failed to get user:', error);
-          AuthService.logout();
-        }
+      try {
+        // Always try to refresh token - the httpOnly cookie may contain a valid refresh token
+        // even when accessTokenMemory is null (e.g., after page refresh)
+        await AuthService.refreshToken();
+        const userData = await AuthService.getCurrentUser();
+        setUser(userData);
+      } catch {
+        // No valid session - user is not authenticated
+        // This is expected for first-time visitors
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
