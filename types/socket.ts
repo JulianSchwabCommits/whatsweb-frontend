@@ -1,16 +1,17 @@
 import { Socket } from "socket.io-client";
 
 export type ServerToClientEvents = {
-    message: (msg: string) => void;
-    directMessage: (msg: string) => void;
+    message: (msg: string | { type: string; content: string; timestamp: string }) => void;
+    roomMessage: (msg: string | { type: string; content: string; timestamp: string }) => void;
+    directMessage: (msg: string | { type: string; content: string; timestamp: string }) => void;
     joinedRoom: (room: string) => void;
     leftRoom: (room: string) => void;
     error: (error: string) => void;
 };
 
 export type ClientToServerEvents = {
-    joinRoom: (room: string) => void;
-    leaveRoom: (room: string) => void;
+    joinRoom: (data: { room: string } | string) => void;
+    leaveRoom: (data: { room: string } | string) => void;
     message: (msg: string) => void;
     roomMessage: (data: { room: string; message: string }) => void;
     directMessage: (data: { targetId: string; message: string }) => void;

@@ -12,6 +12,11 @@ export function useSocket() {
     const [isConnected, setIsConnected] = useState(false);
     const [messages, setMessages] = useState<string[]>([]);
     const [directMessages, setDirectMessages] = useState<string[]>([]);
+    
+    const addMessage = (msg: string) => {
+        console.log("[useSocket] Adding message to UI:", msg);
+        setMessages((prev) => [...prev, msg]);
+    };
 
     useEffect(() => {
         const token = AuthService.getAccessToken();
@@ -36,31 +41,49 @@ export function useSocket() {
             console.log("[useSocket] Disconnected:", reason);
             setIsConnected(false);
         });
-
-        s.on("message", (msg) => {
-            console.log("[useSocket] Room message received:", msg);
-            setMessages((prev) => [...prev, msg]);
+        
+        // Listen for ALL events to debug
+        s.onAny((eventName, ...args) => {
+            console.log(`[Socket Event] ${eventName}:`, args);
         });
 
-        s.on("directMessage", (msg) => {
+        s.on("message", (msg: any) => {
+            console.log("[useSocket] Room message received:", msg);
+            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
+            addMessage(text);
+        });
+        
+        s.on("roomMessage", (msg: any) => {
+            console.log("[useSocket] Room message event received:", msg);
+            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
+            addMessage(text);
+        });
+
+        s.on("directMessage", (msg: any) => {
             console.log("[useSocket] Direct message received:", msg);
-            setDirectMessages((prev) => [...prev, msg]);
+            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
+            setDirectMessages((prev) => [...prev, text]);
         });
 
         // Listen for room events
         s.on("joinedRoom", (room: string) => {
             console.log("[useSocket] Successfully joined room:", room);
-            setMessages((prev) => [...prev, `[System] Joined room: ${room}`]);
+            addMessage(`[System] Joined room: ${room}`);
         });
 
         s.on("leftRoom", (room: string) => {
             console.log("[useSocket] Left room:", room);
-            setMessages((prev) => [...prev, `[System] Left room: ${room}`]);
+            addMessage(`[System] Left room: ${room}`);
         });
 
         s.on("error", (error: string) => {
             console.error("[useSocket] Socket error:", error);
-            setMessages((prev) => [...prev, `[Error] ${error}`]);
+            addMessage(`[Error] ${error}`);
+        });
+        
+        s.on("exception", (error) => {
+            console.error("[useSocket] Socket exception:", error);
+            alert(`Error: ${error.message || 'Unknown error'}`);
         });
 
         // Handle authentication errors
@@ -93,5 +116,6 @@ export function useSocket() {
         directMessages,
         setMessages,
         setDirectMessages,
+        addMessage,
     };
 }

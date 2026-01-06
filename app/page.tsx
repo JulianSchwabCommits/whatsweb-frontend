@@ -19,7 +19,7 @@ export default function ChatPage() {
 }
 
 function ChatPageContent() {
-  const { socket, socketId, isConnected, messages, directMessages, setDirectMessages } = useSocket();
+  const { socket, socketId, isConnected, messages, directMessages, setDirectMessages, addMessage } = useSocket();
   const { resolvedTheme } = useTheme();
   const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -60,15 +60,38 @@ function ChatPageContent() {
   };
 
   const send = () => {
-    if (!text.trim() || !room.trim() || !socket) return;
-    socket.emit("roomMessage", { room: room.trim(), message: text.trim() });
+    if (!text.trim() || !room.trim() || !socket) {
+      console.error("Cannot send - missing text, room, or socket");
+      return;
+    }
+    const message = text.trim();
+    const displayMessage = `[${user?.username || 'You'}]: ${message}`;
+    console.log("Sending message to room:", room.trim(), "message:", message);
+    
+    // Add message immediately to UI (optimistic update)
+    addMessage(displayMessage);
+    
+    socket.emit("roomMessage", { room: room.trim(), message });
     setText("");
   };
 
   const sendDirectMessage = () => {
-    if (!targetId.trim() || !dmText.trim() || !socket) return;
-    socket.emit("directMessage", { targetId: targetId.trim(), message: dmText.trim() });
-    setDirectMessages((prev) => [...prev, `[To ${targetId.slice(0, 2)}]: ${dmText.trim()}`]);
+    if (!targetId.trim() || !dmText.trim() || !socket) {
+      console.error("Cannot send DM - missing targetId, message, or socket");
+      return;
+    }
+    const message = dmText.trim();
+    const target = targetId.trim();
+    console.log("Sending direct message - payload:", { targetId: target, message });
+    
+    // Send to backend
+    socket.emit("directMessage", { targetId: target, message }, (response: any) => {
+      console.log("DM acknowledgment:", response);
+    });
+    
+    // Add optimistic update
+    const displayMessage = `[To ${target.slice(0, 8)}]: ${message}`;
+    setDirectMessages((prev) => [...prev, displayMessage]);
     setDmText("");
   };
 

@@ -20,17 +20,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to restore session on mount using httpOnly cookie
+    // Try to restore session from httpOnly cookie on mount
     const initAuth = async () => {
       try {
-        // Always try to refresh token - the httpOnly cookie may contain a valid refresh token
-        // even when accessTokenMemory is null (e.g., after page refresh)
+        // Try to refresh token using httpOnly cookie
+        // This will work if user has a valid refresh token cookie
         await AuthService.refreshToken();
         const userData = await AuthService.getCurrentUser();
         setUser(userData);
-      } catch {
-        // No valid session - user is not authenticated
-        // This is expected for first-time visitors
+      } catch (error) {
+        // No valid session - user needs to login
+        console.log('No active session');
       } finally {
         setLoading(false);
       }

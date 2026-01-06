@@ -6,7 +6,7 @@ import type {
   User,
 } from '@/types/auth';
 
-
+// In-memory storage (will be restored from httpOnly cookie on page load)
 let accessTokenMemory: string | null = null;
 let userMemory: User | null = null;
 
@@ -56,7 +56,7 @@ export class AuthService {
   }
 
   static async refreshToken(): Promise<string> {
-    // Refresh token is sent via httpOnly cookie automatically
+    // Refresh token is now sent via httpOnly cookie automatically
     const response = await fetch(`${this.baseUrl}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,10 +64,8 @@ export class AuthService {
     });
 
     if (!response.ok) {
-      // Clear in-memory state on refresh failure
-      accessTokenMemory = null;
-      userMemory = null;
-      throw new Error('Session expired or invalid');
+      this.logout();
+      throw new Error('Session expired');
     }
 
     const { accessToken } = await response.json();
