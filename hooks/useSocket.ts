@@ -107,11 +107,6 @@ export function useSocket() {
             }
         });
         
-        s.on("exception", (error) => {
-            console.error("[useSocket] Socket exception:", error);
-            alert(`Error: ${error.message || 'Unknown error'}`);
-        });
-
         // Handle authentication errors
         s.on("connect_error", async (error) => {
             console.error("[useSocket] Connection error:", error.message);
