@@ -26,7 +26,7 @@ function ChatPageContent() {
 
   const [room, setRoom] = useState("");
   const [text, setText] = useState("");
-  const [targetId, setTargetId] = useState("");
+  const [targetUsername, setTargetUsername] = useState("");
   const [dmText, setDmText] = useState("");
 
   useEffect(() => {
@@ -72,20 +72,17 @@ function ChatPageContent() {
   };
 
   const sendDirectMessage = () => {
-    if (!targetId.trim() || !dmText.trim() || !socket) {
-      console.error("Cannot send DM - missing targetId, message, or socket");
+    if (!targetUsername.trim() || !dmText.trim() || !socket) {
+      console.error("Cannot send DM - missing targetUsername, message, or socket");
       return;
     }
     const message = dmText.trim();
-    const target = targetId.trim();
-    console.log("Sending direct message - payload:", { targetId: target, message });
+    const target = targetUsername.trim();
+    console.log("Sending direct message - payload:", { targetUsername: target, message });
     
     // Send to backend
-    socket.emit("directMessage", { targetId: target, message });
+    socket.emit("directMessage", { targetUsername: target, message });
     
-    // Add optimistic update
-    const displayMessage = `[To ${target.slice(0, 8)}]: ${message}`;
-    setDirectMessages((prev) => [...prev, displayMessage]);
     setDmText("");
   };
 
@@ -107,7 +104,7 @@ function ChatPageContent() {
             Welcome, <span className="font-semibold">{user?.username}</span>
           </span>
           <span className={`text-sm ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
-            {isConnected ? '● Connected' : '○ Disconnected'} {socketId && `(${socketId})`}
+            {isConnected ? '● Connected' : '○ Disconnected'}
           </span>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Logout
@@ -132,7 +129,7 @@ function ChatPageContent() {
 
       <section>
         <h2>Direct Message</h2>
-        <Input className="mb-2" placeholder="Target ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
+        <Input className="mb-2" placeholder="Target Username" value={targetUsername} onChange={(e) => setTargetUsername(e.target.value)} />
         <Input className="mb-2" placeholder="Message" value={dmText} onChange={(e) => setDmText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendDirectMessage()} />
         <Button onClick={sendDirectMessage}>Send DM</Button>
         <ul>

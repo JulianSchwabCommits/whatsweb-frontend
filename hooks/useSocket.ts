@@ -64,7 +64,18 @@ export function useSocket() {
 
         s.on("directMessage", (msg: any) => {
             console.log("[useSocket] Direct message received:", msg);
-            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
+            let text: string;
+            if (typeof msg === 'string') {
+                text = msg;
+            } else if (msg.type === 'private-sent') {
+                // Message sent by current user
+                text = `[To ${msg.targetUsername}]: ${msg.content}`;
+            } else if (msg.type === 'private') {
+                // Message received from another user
+                text = `[From ${msg.sender}]: ${msg.content}`;
+            } else {
+                text = msg.content || JSON.stringify(msg);
+            }
             setDirectMessages((prev) => [...prev, text]);
         });
 
@@ -79,16 +90,23 @@ export function useSocket() {
             addMessage(`[System] Left room: ${room}`);
         });
 
-        s.on("error", (error: string) => {
+        s.on("error", (error: any) => {
             console.error("[useSocket] Socket error:", error);
-            addMessage(`[Error] ${error}`);
+            const errorMsg = typeof error === 'string' ? error : error.message || 'Unknown error';
+            const errorCode = typeof error === 'object' ? error.code : null;
+            
+            // Display different messages based on error code
+            if (errorCode === 'USER_NOT_FOUND') {
+                addMessage(`[Error] ${errorMsg}`);
+                alert(`❌ ${errorMsg}`);
+            } else if (errorCode === 'USER_OFFLINE') {
+                addMessage(`[Error] ${errorMsg}`);
+                alert(`⚠️ ${errorMsg}`);
+            } else {
+                addMessage(`[Error] ${errorMsg}`);
+            }
         });
         
-        s.on("exception", (error) => {
-            console.error("[useSocket] Socket exception:", error);
-            alert(`Error: ${error.message || 'Unknown error'}`);
-        });
-
         // Handle authentication errors
         s.on("connect_error", async (error) => {
             console.error("[useSocket] Connection error:", error.message);
