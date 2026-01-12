@@ -49,13 +49,16 @@ export function useSocket() {
 
         s.on("message", (msg: any) => {
             console.log("[useSocket] Room message received:", msg);
-            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
-            addMessage(text);
-        });
-        
-        s.on("roomMessage", (msg: any) => {
-            console.log("[useSocket] Room message event received:", msg);
-            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
+            let text: string;
+            if (typeof msg === 'string') {
+                text = msg;
+            } else if (msg.type === 'room') {
+                text = `[${msg.sender}]: ${msg.content}`;
+            } else if (msg.type === 'system') {
+                text = `[System] ${msg.content}`;
+            } else {
+                text = msg.content || JSON.stringify(msg);
+            }
             addMessage(text);
         });
 

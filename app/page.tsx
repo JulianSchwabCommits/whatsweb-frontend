@@ -48,7 +48,7 @@ function ChatPageContent() {
       console.error("[ChatPage] Socket is not connected");
       return;
     }
-    socket.emit("joinRoom", roomName);
+    socket.emit("joinRoom", { room: roomName });
     console.log("[ChatPage] Emitted joinRoom event for:", roomName);
   };
 
@@ -56,7 +56,7 @@ function ChatPageContent() {
     const roomName = room.trim();
     console.log("[ChatPage] Leave button clicked, room:", roomName);
     if (!roomName || !socket || !isConnected) return;
-    socket.emit("leaveRoom", roomName);
+    socket.emit("leaveRoom", { room: roomName });
   };
 
   const send = () => {
@@ -65,11 +65,7 @@ function ChatPageContent() {
       return;
     }
     const message = text.trim();
-    const displayMessage = `[${user?.username || 'You'}]: ${message}`;
     console.log("Sending message to room:", room.trim(), "message:", message);
-    
-    // Add message immediately to UI (optimistic update)
-    addMessage(displayMessage);
     
     socket.emit("roomMessage", { room: room.trim(), message });
     setText("");
@@ -85,15 +81,15 @@ function ChatPageContent() {
     console.log("Sending direct message - payload:", { targetId: target, message });
     
     // Send to backend
-    socket.emit("directMessage", { targetId: target, message }, (response: any) => {
-      console.log("DM acknowledgment:", response);
-    });
+    socket.emit("directMessage", { targetId: target, message });
     
     // Add optimistic update
     const displayMessage = `[To ${target.slice(0, 8)}]: ${message}`;
     setDirectMessages((prev) => [...prev, displayMessage]);
     setDmText("");
   };
+
+  
 
   const handleLogout = async () => {
     await logout();
