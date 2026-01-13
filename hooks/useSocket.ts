@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { BACKEND_URL } from "@/lib/env";
 import { AppSocket } from "@/types/socket";
 import { AuthService } from "@/lib/auth-service";
 
 interface DirectMessage {
+    message: ReactNode;
     id: string;
     content: string;
     from: string;
@@ -44,7 +45,6 @@ export function useSocket() {
 
         // Room messaging
         s.on("message", (msg: any) => {
-            console.log("[useSocket] Room message received:", msg);
             let text: string;
             if (typeof msg === 'string') {
                 text = msg;
@@ -58,21 +58,31 @@ export function useSocket() {
             addMessage(text);
         });
 
+        // Direct messaging - receive messages from other users
         s.on("directMessage", (msg: any) => {
-            console.log("[useSocket] Direct message received:", msg);
-            let text: string;
-            if (typeof msg === 'string') {
-                text = msg;
-            } else if (msg.type === 'private-sent') {
-                // Message sent by current user
-                text = `[To ${msg.targetUsername}]: ${msg.content}`;
-            } else if (msg.type === 'private') {
-                // Message received from another user
-                text = `[From ${msg.sender}]: ${msg.content}`;
-            } else {
-                text = msg.content || JSON.stringify(msg);
+            // Only process messages with a type field (ignore duplicates without type)
+            if (!msg.type) {
+                return;
             }
-            setDirectMessages((prev) => [...prev, text]);
+            
+            const content = msg.content || msg.message || (typeof msg === 'string' ? msg : '');
+            
+            // Handle different message types
+            if (msg.type === 'private') {
+                // Incoming message from another user
+                const message: DirectMessage = {
+                    id: Date.now().toString(),
+                    content: content,
+                    from: msg.sender || 'Unknown',
+                    to: '',
+                    timestamp: msg.timestamp || new Date().toISOString(),
+                    isSent: false,
+                    message: content
+                };
+                setDirectMessages((prev) => [...prev, message]);
+            } else if (msg.type === 'private-sent') {
+                // Backend confirmation - we already showed this optimistically, so skip
+            }
         });
 
         // Listen for room events
@@ -84,36 +94,19 @@ export function useSocket() {
             addMessage(`[System] Left room: ${room}`);
         });
 
-        // Direct messaging
-        s.on("directMessage", (msg: any) => {
-            if (msg.from === s.id) return;
-            
-            const message: DirectMessage = {
-                id: Date.now().toString(),
-                content: msg.content || msg.message || msg,
-                from: msg.from || 'Unknown',
-                to: s.id || '',
-                timestamp: msg.timestamp || new Date().toISOString(),
-                isSent: false
-            };
-            setDirectMessages((prev) => [...prev, message]);
-        });
-
         s.on("error", (error: any) => {
-            console.error("[useSocket] Socket error:", error);
             const errorMsg = typeof error === 'string' ? error : error.message || 'Unknown error';
             const errorCode = typeof error === 'object' ? error.code : null;
             
-            // Display different messages based on error code
-            if (errorCode === 'USER_NOT_FOUND') {
-                addMessage(`[Error] ${errorMsg}`);
-                alert(`❌ ${errorMsg}`);
-            } else if (errorCode === 'USER_OFFLINE') {
-                addMessage(`[Error] ${errorMsg}`);
-                alert(`⚠️ ${errorMsg}`);
-            } else {
-                addMessage(`[Error] ${errorMsg}`);
+            // Silently ignore USER_NOT_FOUND and USER_OFFLINE for direct messages
+            // The optimistic UI update already shows the message
+            if (errorCode === 'USER_NOT_FOUND' || errorCode === 'USER_OFFLINE') {
+                // Backend bug - ignore silently
+                return;
             }
+            
+            // Only show other errors
+            addMessage(`[Error] ${errorMsg}`);
         });
         
         // Handle authentication errors
@@ -134,30 +127,12 @@ export function useSocket() {
         };
     }, []);
 
-    const sendDirectMessage = (targetId: string, message: string) => {
-        if (!socket || !isConnected) return;
-
-        socket.emit("directMessage", { targetId, message });
-
-        const dm: DirectMessage = {
-            id: Date.now().toString(),
-            content: message,
-            from: socketId,
-            to: targetId,
-            timestamp: new Date().toISOString(),
-            isSent: true
-        };
-
-        setDirectMessages((prev) => [...prev, dm]);
-    };
-
     return {
         socket,
         socketId,
         isConnected,
         messages,
         directMessages,
-        sendDirectMessage,
         addMessage,
     };
 }

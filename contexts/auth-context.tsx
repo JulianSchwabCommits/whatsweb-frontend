@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userData = await AuthService.getCurrentUser();
           setUser(userData);
         } catch (error) {
-          console.error('Failed to get user:', error);
           AuthService.logout();
         }
       }
