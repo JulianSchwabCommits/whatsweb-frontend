@@ -44,15 +44,38 @@ export function useSocket() {
 
         // Room messaging
         s.on("message", (msg: any) => {
-            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
-            addMessage(text);
-        });
-        
-        s.on("roomMessage", (msg: any) => {
-            const text = typeof msg === 'string' ? msg : msg.content || JSON.stringify(msg);
+            console.log("[useSocket] Room message received:", msg);
+            let text: string;
+            if (typeof msg === 'string') {
+                text = msg;
+            } else if (msg.type === 'room') {
+                text = `[${msg.sender}]: ${msg.content}`;
+            } else if (msg.type === 'system') {
+                text = `[System] ${msg.content}`;
+            } else {
+                text = msg.content || JSON.stringify(msg);
+            }
             addMessage(text);
         });
 
+        s.on("directMessage", (msg: any) => {
+            console.log("[useSocket] Direct message received:", msg);
+            let text: string;
+            if (typeof msg === 'string') {
+                text = msg;
+            } else if (msg.type === 'private-sent') {
+                // Message sent by current user
+                text = `[To ${msg.targetUsername}]: ${msg.content}`;
+            } else if (msg.type === 'private') {
+                // Message received from another user
+                text = `[From ${msg.sender}]: ${msg.content}`;
+            } else {
+                text = msg.content || JSON.stringify(msg);
+            }
+            setDirectMessages((prev) => [...prev, text]);
+        });
+
+        // Listen for room events
         s.on("joinedRoom", (room: string) => {
             addMessage(`[System] Joined room: ${room}`);
         });
@@ -76,10 +99,24 @@ export function useSocket() {
             setDirectMessages((prev) => [...prev, message]);
         });
 
-        s.on("error", (error: string) => {
-            addMessage(`[Error] ${error}`);
+        s.on("error", (error: any) => {
+            console.error("[useSocket] Socket error:", error);
+            const errorMsg = typeof error === 'string' ? error : error.message || 'Unknown error';
+            const errorCode = typeof error === 'object' ? error.code : null;
+            
+            // Display different messages based on error code
+            if (errorCode === 'USER_NOT_FOUND') {
+                addMessage(`[Error] ${errorMsg}`);
+                alert(`❌ ${errorMsg}`);
+            } else if (errorCode === 'USER_OFFLINE') {
+                addMessage(`[Error] ${errorMsg}`);
+                alert(`⚠️ ${errorMsg}`);
+            } else {
+                addMessage(`[Error] ${errorMsg}`);
+            }
         });
-
+        
+        // Handle authentication errors
         s.on("connect_error", async (error) => {
             if (error.message === "Unauthorized") {
                 try {
