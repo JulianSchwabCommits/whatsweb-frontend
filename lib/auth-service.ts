@@ -6,11 +6,47 @@ import type {
   User,
 } from '@/types/auth';
 
-// In-memory storage (will be restored from httpOnly cookie on page load)
-let accessTokenMemory: string | null = null;
-let userMemory: User | null = null;
+// localStorage keys
+const TOKEN_KEY = 'access_token';
+const USER_KEY = 'user_data';
 
 export class AuthService {
+  // Get token from localStorage
+  private static getStoredToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(TOKEN_KEY);
+  }
+
+  // Get user from localStorage
+  private static getStoredUser(): User | null {
+    if (typeof window === 'undefined') return null;
+    const userData = localStorage.getItem(USER_KEY);
+    try {
+      return userData ? JSON.parse(userData) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Save token to localStorage
+  private static saveToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+
+  // Save user to localStorage
+  private static saveUser(user: User): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+
+  // Clear localStorage
+  private static clearStorage(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  }
+
   private static get baseUrl(): string {
     const url = process.env.NEXT_PUBLIC_BACKEND_URL;
     if (!url) {
@@ -64,65 +100,66 @@ export class AuthService {
     });
 
     if (!response.ok) {
-      this.logout();
+      // Don't call logout here - just throw error
+      // The caller will handle it appropriately
       throw new Error('Session expired');
     }
 
     const { accessToken } = await response.json();
-    accessTokenMemory = accessToken;
+    this.saveToken(accessToken);
     return accessToken;
   }
 
   static async getCurrentUser(): Promise<User> {
     const response = await this.fetchWithAuth(`${this.baseUrl}/auth/me`);
     const user = await response.json();
-    userMemory = user;
+    this.saveUser(user);
     return user;
   }
 
   static async logout(): Promise<void> {
     try {
+      const token = this.getStoredToken();
       await fetch(`${this.baseUrl}/auth/logout`, {
         method: 'POST',
-        credentials: 'include', // Include cookies to invalidate refresh token
-        headers: accessTokenMemory ? {
-          'Authorization': `Bearer ${accessTokenMemory}`,
+        credentials: 'include',
+        headers: token ? {
+          'Authorization': `Bearer ${token}`,
         } : {},
       });
     } finally {
-      // Clear in-memory tokens
-      accessTokenMemory = null;
-      userMemory = null;
+      this.clearStorage();
     }
   }
 
   static isAuthenticated(): boolean {
-    return !!accessTokenMemory;
+    return !!this.getStoredToken();
   }
 
   static getUser(): User | null {
-    return userMemory;
+    return this.getStoredUser();
   }
 
   static getAccessToken(): string | null {
-    return accessTokenMemory;
+    return this.getStoredToken();
   }
 
   private static setTokens(data: AuthResponse): void {
-    accessTokenMemory = data.accessToken;
-    userMemory = data.user;
+    this.saveToken(data.accessToken);
+    this.saveUser(data.user);
   }
 
   private static async fetchWithAuth(
     url: string,
     options: RequestInit = {}
   ): Promise<Response> {
+    const token = this.getStoredToken();
     let response = await fetch(url, {
       ...options,
-      credentials: 'include', // Include cookies
+      credentials: 'include',
       headers: {
         ...options.headers,
-        ...(accessTokenMemory ? { 'Authorization': `Bearer ${accessTokenMemory}` } : {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
     });
 
