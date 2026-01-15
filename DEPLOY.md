@@ -1,6 +1,3 @@
-# Techstack
-- react
-- socket.io
 
 ## list containers in rg
 az container list --resource-group whatsweb-rg --output table
