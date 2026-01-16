@@ -53,6 +53,7 @@ export class AuthService {
   }
 
   static async refreshToken(): Promise<string> {
+    // credentials: 'include' ensures HTTP-only refresh cookie is sent automatically
     const res = await fetch(`${this.baseUrl}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
@@ -60,11 +61,14 @@ export class AuthService {
     });
 
     if (!res.ok) {
+      // Debug: Check if this is a cookie/CORS issue
+      console.debug('[Auth] Refresh failed:', res.status, res.statusText);
       throw new Error('Session expired');
     }
 
     const { accessToken } = await res.json();
     this.setAccessToken(accessToken);
+    console.debug('[Auth] Token refreshed successfully');
     return accessToken;
   }
 
@@ -176,7 +180,7 @@ export class AuthService {
     this.setItem(USER_KEY, user);
   }
 
-  private static clearStorage() {
+  static clearStorage() {
     this.removeItem(TOKEN_KEY);
     this.removeItem(USER_KEY);
   }
