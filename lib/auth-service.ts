@@ -1,4 +1,3 @@
-// Authentication service for API calls
 import type {
   RegisterRequest,
   LoginRequest,
@@ -6,186 +5,179 @@ import type {
   User,
 } from '@/types/auth';
 
-// localStorage keys
+// Keys for localStorage
 const TOKEN_KEY = 'access_token';
 const USER_KEY = 'user_data';
 
-export class AuthService {
-  // Get token from localStorage
-  private static getStoredToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_KEY);
-  }
+const isBrowser = typeof window !== 'undefined';
 
-  // Get user from localStorage
-  private static getStoredUser(): User | null {
-    if (typeof window === 'undefined') return null;
-    const userData = localStorage.getItem(USER_KEY);
+export class AuthService {
+  // storage helpers
+
+  private static getItem<T>(key: string): T | null {
+    if (!isBrowser) return null;
     try {
-      return userData ? JSON.parse(userData) : null;
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : null;
     } catch {
       return null;
     }
   }
 
-  // Save token to localStorage
-  private static saveToken(token: string): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(TOKEN_KEY, token);
+  private static setItem(key: string, value: unknown) {
+    if (!isBrowser) return;
+    localStorage.setItem(key, JSON.stringify(value));
   }
 
-  // Save user to localStorage
-  private static saveUser(user: User): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  private static removeItem(key: string) {
+    if (!isBrowser) return;
+    localStorage.removeItem(key);
   }
 
-  // Clear localStorage
-  private static clearStorage(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-  }
+  // base url
 
   private static get baseUrl(): string {
     const url = process.env.NEXT_PUBLIC_BACKEND_URL;
-    if (!url) {
-      throw new Error('NEXT_PUBLIC_BACKEND_URL is not defined');
-    }
+    if (!url) throw new Error('NEXT_PUBLIC_BACKEND_URL is not defined');
     return url;
   }
 
+  // public api
+
   static async register(data: RegisterRequest): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseUrl}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message);
-    }
-
-    const result = await response.json();
-    this.setTokens(result);
-    return result;
+    return this.authRequest('/auth/register', data);
   }
 
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseUrl}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Include cookies for httpOnly refresh token
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message);
-    }
-
-    const result = await response.json();
-    this.setTokens(result);
-    return result;
+    return this.authRequest('/auth/login', credentials);
   }
 
   static async refreshToken(): Promise<string> {
-    // Refresh token is now sent via httpOnly cookie automatically
-    const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+    const res = await fetch(`${this.baseUrl}/auth/refresh`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Send httpOnly cookie with refresh token
     });
 
-    if (!response.ok) {
-      // Don't call logout here - just throw error
-      // The caller will handle it appropriately
+    if (!res.ok) {
       throw new Error('Session expired');
     }
 
-    const { accessToken } = await response.json();
-    this.saveToken(accessToken);
+    const { accessToken } = await res.json();
+    this.setAccessToken(accessToken);
     return accessToken;
   }
 
   static async getCurrentUser(): Promise<User> {
-    const response = await this.fetchWithAuth(`${this.baseUrl}/auth/me`);
-    const user = await response.json();
-    this.saveUser(user);
+    const res = await this.fetchWithAuth(`${this.baseUrl}/auth/me`);
+    const user = await res.json();
+    this.setUser(user);
     return user;
   }
 
   static async logout(): Promise<void> {
     try {
-      // 1. Disconnect WebSocket FIRST
+      // Disconnect WS first (correct order)
       const { chatService } = await import('./chat-service');
       chatService.disconnect();
-      
-      // 2. Then call logout API
-      const token = this.getStoredToken();
+
+      const token = this.getAccessToken();
       await fetch(`${this.baseUrl}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
-        headers: token ? {
-          'Authorization': `Bearer ${token}`,
-        } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } finally {
-      // 3. Clear local storage
       this.clearStorage();
     }
   }
 
   static isAuthenticated(): boolean {
-    return !!this.getStoredToken();
+    return !!this.getAccessToken();
   }
 
   static getUser(): User | null {
-    return this.getStoredUser();
+    return this.getItem<User>(USER_KEY);
   }
 
   static getAccessToken(): string | null {
-    return this.getStoredToken();
+    return this.getItem<string>(TOKEN_KEY);
   }
 
-  private static setTokens(data: AuthResponse): void {
-    this.saveToken(data.accessToken);
-    this.saveUser(data.user);
+  // internal helpers
+
+  private static async authRequest(
+    path: string,
+    body: unknown
+  ): Promise<AuthResponse> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message);
+    }
+
+    const result = await res.json();
+    this.setAuthData(result);
+    return result;
   }
 
   private static async fetchWithAuth(
     url: string,
     options: RequestInit = {}
   ): Promise<Response> {
-    const token = this.getStoredToken();
-    let response = await fetch(url, {
+    const token = this.getAccessToken();
+
+    let res = await fetch(url, {
       ...options,
       credentials: 'include',
       headers: {
         ...options.headers,
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 
-    if (response.status === 401) {
+    if (res.status === 401) {
       const newToken = await this.refreshToken();
-      response = await fetch(url, {
+      res = await fetch(url, {
         ...options,
         credentials: 'include',
         headers: {
           ...options.headers,
-          'Authorization': `Bearer ${newToken}`,
+          Authorization: `Bearer ${newToken}`,
         },
       });
     }
 
-    if (!response.ok) {
-      const error = await response.json();
+    if (!res.ok) {
+      const error = await res.json();
       throw new Error(error.message);
     }
 
-    return response;
+    return res;
+  }
+
+  private static setAuthData(data: AuthResponse) {
+    this.setAccessToken(data.accessToken);
+    this.setUser(data.user);
+  }
+
+  private static setAccessToken(token: string) {
+    if (!isBrowser) return;
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+
+  private static setUser(user: User) {
+    this.setItem(USER_KEY, user);
+  }
+
+  private static clearStorage() {
+    this.removeItem(TOKEN_KEY);
+    this.removeItem(USER_KEY);
   }
 }
