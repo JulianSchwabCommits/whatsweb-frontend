@@ -119,6 +119,11 @@ export class AuthService {
 
   static async logout(): Promise<void> {
     try {
+      // 1. Disconnect WebSocket FIRST
+      const { chatService } = await import('./chat-service');
+      chatService.disconnect();
+      
+      // 2. Then call logout API
       const token = this.getStoredToken();
       await fetch(`${this.baseUrl}/auth/logout`, {
         method: 'POST',
@@ -128,6 +133,7 @@ export class AuthService {
         } : {},
       });
     } finally {
+      // 3. Clear local storage
       this.clearStorage();
     }
   }

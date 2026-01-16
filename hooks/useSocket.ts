@@ -1,10 +1,10 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { io } from "socket.io-client";
-import { BACKEND_URL } from "@/lib/env";
 import { AppSocket } from "@/types/socket";
 import { AuthService } from "@/lib/auth-service";
+import { chatService } from "@/lib/chat-service";
+import { toast } from "sonner";
 
 interface DirectMessage {
     message: ReactNode;
@@ -28,23 +28,42 @@ export function useSocket() {
     };
 
     useEffect(() => {
-        const token = AuthService.getAccessToken();
-        
-        const s: AppSocket = io(BACKEND_URL, { 
-            transports: ["websocket"],
-            auth: { token }
-        });
-        setSocket(s);
+        // Poll for socket connection (it may not be ready immediately after login)
+        const checkSocket = () => {
+            const s = chatService.getSocket() as AppSocket;
+            if (s && s !== socket) {
+                setSocket(s);
+                setIsConnected(s.connected);
+                setSocketId(s.id ?? "");
 
-        s.on("connect", () => {
-            setSocketId(s.id ?? "");
+                s.on("connect", () => {
+                    setSocketId(s.id ?? "");
+                    setIsConnected(true);
+                });
+            }
+        };
+
+        // Check immediately
+        checkSocket();
+
+        // Poll every 500ms for socket availability
+        const interval = setInterval(checkSocket, 500);
+
+        return () => clearInterval(interval);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on("connect", () => {
+            setSocketId(socket.id ?? "");
             setIsConnected(true);
         });
 
-        s.on("disconnect", () => setIsConnected(false));
+        socket.on("disconnect", () => setIsConnected(false));
 
         // Room messaging
-        s.on("message", (msg: any) => {
+        socket.on("message", (msg: any) => {
             let text: string;
             if (typeof msg === 'string') {
                 text = msg;
@@ -59,7 +78,7 @@ export function useSocket() {
         });
 
         // Direct messaging - receive messages from other users
-        s.on("directMessage", (msg: any) => {
+        socket.on("directMessage", (msg: any) => {
             // Only process messages with a type field (ignore duplicates without type)
             if (!msg.type) {
                 return;
@@ -86,15 +105,15 @@ export function useSocket() {
         });
 
         // Listen for room events
-        s.on("joinedRoom", (room: string) => {
+        socket.on("joinedRoom", (room: string) => {
             addMessage(`[System] Joined room: ${room}`);
         });
 
-        s.on("leftRoom", (room: string) => {
+        socket.on("leftRoom", (room: string) => {
             addMessage(`[System] Left room: ${room}`);
         });
 
-        s.on("error", (error: any) => {
+        socket.on("error", (error: any) => {
             const errorMsg = typeof error === 'string' ? error : error.message || 'Unknown error';
             const errorCode = typeof error === 'object' ? error.code : null;
             
@@ -105,27 +124,65 @@ export function useSocket() {
                 return;
             }
             
-            // Only show other errors
+            // Show error toast to user with appropriate styling based on error code
+            if (errorCode === 'AUTHENTICATION_FAILED') {
+                toast.error('Authentication failed', {
+                    description: errorMsg,
+                    action: {
+                        label: 'Login',
+                        onClick: () => window.location.href = '/login'
+                    }
+                });
+            } else if (errorCode === 'INVALID_ROOM') {
+                toast.error('Invalid room', {
+                    description: errorMsg
+                });
+            } else if (errorCode === 'RATE_LIMIT') {
+                toast.warning('Rate limit exceeded', {
+                    description: errorMsg
+                });
+            } else {
+                // Generic error
+                toast.error('Error', {
+                    description: errorMsg
+                });
+            }
+            
+            // Also add to message log
             addMessage(`[Error] ${errorMsg}`);
         });
         
         // Handle authentication errors
-        s.on("connect_error", async (error) => {
+        socket.on("connect_error", async (error) => {
             if (error.message === "Unauthorized") {
                 try {
                     const newToken = await AuthService.refreshToken();
-                    s.auth = { token: newToken };
-                    s.connect();
+                    socket.auth = { token: newToken };
+                    socket.connect();
                 } catch {
-                    window.location.href = '/login';
+                    toast.error('Session expired', {
+                        description: 'Please login again to continue',
+                        action: {
+                            label: 'Login',
+                            onClick: () => window.location.href = '/login'
+                        }
+                    });
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
                 }
+            } else {
+                // Show connection error to user
+                toast.error('Connection failed', {
+                    description: error.message || 'Unable to connect to server'
+                });
             }
         });
 
         return () => {
-            s.disconnect();
+            // Don't disconnect here - let auth context manage lifecycle
         };
-    }, []);
+    }, [socket]);
 
     return {
         socket,

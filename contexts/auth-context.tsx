@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthService } from '@/lib/auth-service';
+import { chatService } from '@/lib/chat-service';
 import type { User, LoginRequest, RegisterRequest } from '@/types/auth';
 
 interface AuthContextType {
@@ -22,12 +23,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if user is logged in on mount
     const initAuth = async () => {
-      if (AuthService.isAuthenticated()) {
+      const token = AuthService.getAccessToken();
+      
+      if (token) {
         try {
+          // Check if token is still valid by fetching user
           const userData = await AuthService.getCurrentUser();
           setUser(userData);
+          
+          // Connect with existing token
+          chatService.connect(token);
         } catch (error) {
-          AuthService.logout();
+          // Token expired, try to refresh
+          try {
+            const newToken = await AuthService.refreshToken();
+            const userData = await AuthService.getCurrentUser();
+            setUser(userData);
+            chatService.connect(newToken);
+          } catch {
+            // Refresh failed, logout
+            await AuthService.logout();
+          }
         }
       }
       setLoading(false);
@@ -39,11 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: LoginRequest) => {
     const result = await AuthService.login(credentials);
     setUser(result.user);
+    
+    // Connect WebSocket with token
+    chatService.connect(result.accessToken);
   };  
 
   const register = async (data: RegisterRequest) => {
     const result = await AuthService.register(data);
     setUser(result.user);
+    
+    // Connect WebSocket with token
+    chatService.connect(result.accessToken);
   };
 
   const logout = async () => {
