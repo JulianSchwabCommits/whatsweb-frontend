@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthService } from '@/lib/auth-service';
 import { chatService } from '@/lib/chat-service';
 import type { User, LoginRequest, RegisterRequest } from '@/types/auth';
@@ -20,70 +20,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper to connect WebSocket if token exists
+  const connectSocket = useCallback((token: string) => {
+    chatService.connect(token);
+  }, []);
+
+  // Initialize auth on mount
   useEffect(() => {
-    // Check if user is logged in on mount
     const initAuth = async () => {
       const token = AuthService.getAccessToken();
-      
-      if (token) {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const userData = await AuthService.getCurrentUser();
+        setUser(userData);
+        connectSocket(token);
+      } catch {
+        // Token invalid or expired, try refresh
         try {
-          // Check if token is still valid by fetching user
+          const newToken = await AuthService.refreshToken();
           const userData = await AuthService.getCurrentUser();
           setUser(userData);
-          
-          // Connect with existing token
-          chatService.connect(token);
-        } catch (error) {
-          // Token expired, try to refresh
-          try {
-            const newToken = await AuthService.refreshToken();
-            const userData = await AuthService.getCurrentUser();
-            setUser(userData);
-            chatService.connect(newToken);
-          } catch {
-            // Refresh failed, logout
-            await AuthService.logout();
-          }
+          connectSocket(newToken);
+        } catch {
+          await AuthService.logout();
         }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
-  }, []);
+  }, [connectSocket]);
 
-  const login = async (credentials: LoginRequest) => {
+  const login = useCallback(async (credentials: LoginRequest) => {
     const result = await AuthService.login(credentials);
     setUser(result.user);
-    
-    // Connect WebSocket with token
-    chatService.connect(result.accessToken);
-  };  
+    connectSocket(result.accessToken);
+  }, [connectSocket]);
 
-  const register = async (data: RegisterRequest) => {
+  const register = useCallback(async (data: RegisterRequest) => {
     const result = await AuthService.register(data);
     setUser(result.user);
-    
-    // Connect WebSocket with token
-    chatService.connect(result.accessToken);
-  };
+    connectSocket(result.accessToken);
+  }, [connectSocket]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await AuthService.logout();
     setUser(null);
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        logout,
-        isAuthenticated: !!user,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      isAuthenticated: !!user
+    }}>
       {children}
     </AuthContext.Provider>
   );
