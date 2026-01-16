@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Shader3 } from '@/components/shader3';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -38,8 +39,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      <Shader3 className="absolute inset-0 -z-10" />
+      <div className="w-full max-w-md space-y-8 px-8 py-10 bg-background/80 backdrop-blur-md rounded-xl border shadow-xl z-10">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight">Welcome back</h2>
           <p className="mt-2 text-sm text-muted-foreground">
