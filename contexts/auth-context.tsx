@@ -29,25 +29,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       const token = AuthService.getAccessToken();
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const userData = await AuthService.getCurrentUser();
-        setUser(userData);
-        connectSocket(token);
-      } catch {
-        // Token invalid or expired, try refresh
+      
+      // If we have a token, try to use it first
+      if (token) {
         try {
-          const newToken = await AuthService.refreshToken();
           const userData = await AuthService.getCurrentUser();
           setUser(userData);
-          connectSocket(newToken);
-        } catch {
-          await AuthService.logout();
+          connectSocket(token);
+          setLoading(false);
+          return;
+        } catch (error) {
+          // Token invalid or expired, will try refresh below
+          console.debug('[Auth] Access token invalid, attempting refresh...', error);
         }
+      }
+
+      // No token or token was invalid - try to refresh using HTTP-only cookie
+      // This handles the case where localStorage was cleared but cookie still exists
+      try {
+        const newToken = await AuthService.refreshToken();
+        const userData = await AuthService.getCurrentUser();
+        setUser(userData);
+        connectSocket(newToken);
+      } catch (error) {
+        // Refresh failed - user needs to login
+        // This is expected if no valid refresh cookie exists
+        console.debug('[Auth] Refresh failed, user not authenticated', error);
+        AuthService.clearStorage();
       } finally {
         setLoading(false);
       }
